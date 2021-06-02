@@ -40,7 +40,7 @@ elif [ "$1" ] ; then
     remoteBasePath="$1"
 else
     usage
-    #exit 1
+    exit 1
 fi
 
 echo localBasePath=$localBasePath
