@@ -1,5 +1,6 @@
 #!/bin/sh
 
+# https://github.com/robertjschulz/syncUp
 
 # syncUp is a shell program syncing a local folder to a target server and keep the target up to date quickly.
 # This normally is helpful for developing and Dev-Testing on a remote machine.
@@ -36,11 +37,15 @@ if [ "$2" ] ; then
     localBasePath="$1"
     remoteBasePath="$2"
 elif [ "$1" ] ; then
-    localBasePath="."
+    localBasePath="$(pwd)"
     remoteBasePath="$1"
 else
     usage
     exit 1
+fi
+
+if [[ "$localBasePath" = "." ]]; then
+    localBasePath="$(pwd)"
 fi
 
 echo localBasePath=$localBasePath
@@ -54,7 +59,7 @@ function uploadFile () {
     echo srcrel=$srcrel
     local RSYNC_OPTS="-P --delay-updates --partial"
     if type rsync; then
-        until rsync $RSYNC_OPTS --rsync-path="mkdir -p \"${remoteBasePath}\" && rsync" "$src" ninawebps@gh-srvninaweb01.nuance.com:"$dst" ; do 
+        until rsync $RSYNC_OPTS --rsync-path="mkdir -p \"${remoteBasePath}\" && rsync" "$src" "$dst" ; do 
             local rc=$?
             if [[ $rc == $RSYNC_EXIT_SIGINT ]]; then
                 echo "INTERRIUPTED... ($rc) stopping...";
@@ -64,7 +69,7 @@ function uploadFile () {
             fi
         done
     else
-        scp "$src" ninawebps@ui-dev.nina-nuance.com:"$dst" || { echo FAILED; exit 1; }
+        scp "$src" "$dst" || { echo FAILED; exit 1; }
     fi
 }
 
@@ -72,10 +77,12 @@ export -f uploadFile
 
 RSYNC_OPTS="-P --delay-updates --partial"
 
+echo '=== STARTUP: uploading all files ==='
 for f in "${localBasePath}"/* ; do
   uploadFile "$f" 
 done
 
+echo '=== WATCHING ==='
 fswatch -0 \
   "${localBasePath}"/* \
   | while IFS= read -r -d '' ; do echo "$REPLY" ; uploadFile "$REPLY" ; done
